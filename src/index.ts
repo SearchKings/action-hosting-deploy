@@ -40,6 +40,9 @@ import {
 // Inputs defined in action.yml
 const expires = getInput("expires");
 const projectId = getInput("projectId");
+const siteIds = getInput("siteIds");
+const siteIdsList: string[] = JSON.parse(siteIds);
+const siteId = getInput("siteId");
 const googleApplicationCredentials = getInput("firebaseServiceAccount", {
   required: true,
 });
@@ -142,7 +145,14 @@ async function run() {
     if (token && isPullRequest && !!octokit) {
       const commitId = context.payload.pull_request?.head.sha.substring(0, 7);
 
-      await postChannelSuccessComment(octokit, context, deployment, commitId);
+      await postChannelSuccessComment(
+        octokit,
+        context,
+        deployment,
+        commitId,
+        siteId,
+        siteIdsList
+      );
     }
 
     await finish({

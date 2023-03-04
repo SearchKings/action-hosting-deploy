@@ -45,16 +45,36 @@ export function getURLsMarkdownFromChannelDeployResult(
 
 export function getChannelDeploySuccessComment(
   result: ChannelSuccessResult,
-  commit: string
-) {
+  commit: string,
+  siteId: string,
+  siteIds: string[],
+  existingCommentBody?: string
+): string {
   const deploySignature = createDeploySignature(result);
   const urlList = getURLsMarkdownFromChannelDeployResult(result);
   const { expireTime } = interpretChannelDeployResult(result);
+  let urlBlock = "";
+
+  if (existingCommentBody) {
+    let urlBlock = selectTextBetweenDashes(existingCommentBody);
+    const existingSiteIds = getSiteIds(urlBlock);
+    const sitesToRemove = existingSiteIds.filter(
+      (existingSiteId) => !siteIds.includes(existingSiteId)
+    );
+
+    if (sitesToRemove.length) {
+      urlBlock = removeUnusedSiteIds(urlBlock, sitesToRemove);
+    }
+  }
+
+  urlBlock = replaceLineWithText(urlBlock, siteId, urlList);
 
   return `
-Visit the preview URL for this PR (updated for commit ${commit}):
+Visit the preview URL(s) for this PR (updated for commit ${commit}):
 
-${urlList}
+---
+${urlBlock}
+---
 
 <sub>(expires ${new Date(expireTime).toUTCString()})</sub>
 
@@ -67,31 +87,26 @@ export async function postChannelSuccessComment(
   github: InstanceType<typeof GitHub>,
   context: Context,
   result: ChannelSuccessResult,
-  commit: string
+  commit: string,
+  siteId: string,
+  siteIds: string[]
 ) {
   const commentInfo = {
     ...context.repo,
     issue_number: context.issue.number,
   };
 
-  const commentMarkdown = getChannelDeploySuccessComment(result, commit);
-
-  const comment = {
-    ...commentInfo,
-    body: commentMarkdown,
-  };
-
   startGroup(`Commenting on PR`);
   const deploySignature = createDeploySignature(result);
   const isCommentByBot = createBotCommentIdentifier(deploySignature);
 
-  let commentId;
+  let existingComment;
   try {
     const comments = (await github.issues.listComments(commentInfo)).data;
     for (let i = comments.length; i--; ) {
       const c = comments[i];
       if (isCommentByBot(c)) {
-        commentId = c.id;
+        existingComment = c;
         break;
       }
     }
@@ -99,24 +114,115 @@ export async function postChannelSuccessComment(
     console.log("Error checking for previous comments: " + e.message);
   }
 
-  if (commentId) {
+  if (existingComment) {
     try {
+      const commentMarkdown = getChannelDeploySuccessComment(
+        result,
+        commit,
+        siteId,
+        siteIds,
+        existingComment.body
+      );
+
+      const comment = {
+        ...commentInfo,
+        body: commentMarkdown,
+      };
+
       await github.issues.updateComment({
         ...context.repo,
-        comment_id: commentId,
+        comment_id: existingComment.id,
         body: comment.body,
       });
     } catch (e) {
-      commentId = null;
+      existingComment = null;
     }
   }
 
-  if (!commentId) {
+  if (!existingComment) {
     try {
+      const commentMarkdown = getChannelDeploySuccessComment(
+        result,
+        commit,
+        siteId,
+        siteIds
+      );
+
+      const comment = {
+        ...commentInfo,
+        body: commentMarkdown,
+      };
+
       await github.issues.createComment(comment);
     } catch (e) {
       console.log(`Error creating comment: ${e.message}`);
     }
   }
   endGroup();
+}
+
+function selectTextBetweenDashes(commentBody: string): string {
+  const regex = /---([\s\S]*?)---/; // match all characters (including line breaks) between the first "---" and the next "---"
+  const match = regex.exec(commentBody);
+
+  if (match) {
+    return match[1].trim(); // return the matched text with leading and trailing whitespace removed
+  } else {
+    return ""; // return an empty string if no match is found
+  }
+}
+
+function replaceLineWithText(
+  commentBody: string,
+  siteId: string,
+  url: string
+): string {
+  // Split the text into an array of lines
+  const lines = commentBody.split("\n");
+  const siteLine = `[${siteId}] ${url}`;
+  let exists = false;
+
+  // Loop through each line
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // Check if the line contains the search text
+    if (line.includes(siteId)) {
+      exists = true;
+      // Replace the line with the replacement text
+      lines[i] = siteLine;
+      break;
+    }
+  }
+
+  if (!exists) {
+    lines.push(siteLine);
+  }
+
+  // Join the lines back together into a single string and return it
+  return lines.join("\n");
+}
+
+function removeUnusedSiteIds(
+  urlBlock: string,
+  sitesToRemove: string[]
+): string {
+  // Split the text into an array of lines
+  const lines = urlBlock.split("\n");
+
+  return lines
+    .filter((line) =>
+      sitesToRemove.some((siteId) => line.startsWith(`[${siteId}]`))
+    )
+    .join("\n");
+}
+
+function getSiteIds(commentBody: string): string[] {
+  const regex = /\[([a-z-]+)\]:/g;
+  const labels = [];
+  let match;
+  while ((match = regex.exec(commentBody)) !== null) {
+    labels.push(match[1]);
+  }
+  return labels;
 }
