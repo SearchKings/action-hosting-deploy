@@ -115,7 +115,7 @@ async function run() {
       return;
     }
 
-    const channelId = getChannelId(configuredChannelId, context);
+    const channelId = getChannelId(configuredChannelId, context, siteId);
 
     startGroup(`Deploying to Firebase preview channel ${channelId}`);
     const deployment = await deployPreview(gacFilename, {
