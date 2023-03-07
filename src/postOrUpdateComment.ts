@@ -57,17 +57,40 @@ export function getChannelDeploySuccessComment(
 
   if (existingCommentBody) {
     let urlBlock = selectTextBetweenDashes(existingCommentBody);
+
+    console.log("Parsed existing URL block", urlBlock);
+
     const existingSiteIds = getSiteIds(urlBlock);
+
+    console.log(
+      "Found existing siteIds",
+      existingSiteIds,
+      typeof existingSiteIds
+    );
+
     const sitesToRemove = existingSiteIds.filter(
       (existingSiteId) => !siteIds.includes(existingSiteId)
     );
 
     if (sitesToRemove.length) {
+      console.log("Found sites to remove", sitesToRemove, typeof sitesToRemove);
       urlBlock = removeUnusedSiteIds(urlBlock, sitesToRemove);
+      console.log("URL block after remove", urlBlock, typeof urlBlock);
     }
   }
 
+  console.log(
+    "URL block before replacement",
+    urlBlock,
+    typeof urlBlock,
+    siteId,
+    typeof siteId,
+    urlList,
+    typeof urlList
+  );
+
   urlBlock = replaceLineWithText(urlBlock, siteId, urlList);
+  console.log("URL block after replacement", urlBlock, typeof urlBlock);
 
   return `
 Visit the preview URL(s) for this PR (updated for commit ${commit}):
@@ -115,6 +138,7 @@ export async function postChannelSuccessComment(
   }
 
   if (existingComment) {
+    console.log("Found existing comment");
     try {
       const commentMarkdown = getChannelDeploySuccessComment(
         result,
@@ -140,6 +164,7 @@ export async function postChannelSuccessComment(
   }
 
   if (!existingComment) {
+    console.log("Creating new comment");
     try {
       const commentMarkdown = getChannelDeploySuccessComment(
         result,

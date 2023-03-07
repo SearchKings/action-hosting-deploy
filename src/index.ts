@@ -43,6 +43,10 @@ const projectId = getInput("projectId");
 const siteIds = getInput("siteIds");
 const siteIdsList: string[] = JSON.parse(siteIds);
 const siteId = getInput("siteId");
+
+console.log("Got siteId", siteId, typeof siteId);
+console.log("Got siteIds", siteIds, typeof siteIds);
+
 const googleApplicationCredentials = getInput("firebaseServiceAccount", {
   required: true,
 });
