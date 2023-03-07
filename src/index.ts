@@ -45,7 +45,7 @@ const siteIdsList: string[] = JSON.parse(siteIds);
 const siteId = getInput("siteId");
 
 console.log("Got siteId", siteId, typeof siteId);
-console.log("Got siteIds", siteIds, typeof siteIds);
+console.log("Got siteIdsList", siteIdsList, typeof siteIdsList);
 
 const googleApplicationCredentials = getInput("firebaseServiceAccount", {
   required: true,

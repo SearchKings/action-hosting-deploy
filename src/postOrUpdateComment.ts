@@ -56,7 +56,7 @@ export function getChannelDeploySuccessComment(
   let urlBlock = "";
 
   if (existingCommentBody) {
-    let urlBlock = selectTextBetweenDashes(existingCommentBody);
+    urlBlock = selectTextBetweenDashes(existingCommentBody);
 
     console.log("Parsed existing URL block", urlBlock);
 
@@ -243,7 +243,7 @@ function removeUnusedSiteIds(
 }
 
 function getSiteIds(commentBody: string): string[] {
-  const regex = /\[([a-z-]+)\]:/g;
+  const regex = /\[(.+)\]\s/g;
   const labels = [];
   let match;
   while ((match = regex.exec(commentBody)) !== null) {
