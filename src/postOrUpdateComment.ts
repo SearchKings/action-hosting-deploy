@@ -24,9 +24,6 @@ import {
 } from "./deploy";
 import { createDeploySignature } from "./hash";
 
-const BOT_SIGNATURE =
-  "<sub>🔥 via [Firebase Hosting GitHub Action](https://github.com/marketplace/actions/deploy-to-firebase-hosting) 🌎</sub>";
-
 export function createBotCommentIdentifier(signature: string) {
   return function isCommentByBot(comment): boolean {
     return comment.user.type === "Bot" && comment.body.includes(signature);
@@ -56,7 +53,7 @@ export function getChannelDeploySuccessComment(
   let urlBlock = "";
 
   if (existingCommentBody) {
-    urlBlock = selectTextBetweenDashes(existingCommentBody);
+    urlBlock = getUrlLines(existingCommentBody);
 
     console.log("Parsed existing URL block", urlBlock);
 
@@ -95,13 +92,9 @@ export function getChannelDeploySuccessComment(
   return `
 Visit the preview URL(s) for this PR (updated for commit ${commit}):
 
----
 ${urlBlock}
----
 
 <sub>(expires ${new Date(expireTime).toUTCString()})</sub>
-
-${BOT_SIGNATURE}
 
 <sub>Sign: ${deploySignature}</sub>`.trim();
 }
@@ -186,15 +179,10 @@ export async function postChannelSuccessComment(
   endGroup();
 }
 
-function selectTextBetweenDashes(commentBody: string): string {
-  const regex = /---([\s\S]*?)---/; // match all characters (including line breaks) between the first "---" and the next "---"
-  const match = regex.exec(commentBody);
+function getUrlLines(commentBody: string): string {
+  const lines = commentBody.split("\n");
 
-  if (match) {
-    return match[1].trim(); // return the matched text with leading and trailing whitespace removed
-  } else {
-    return ""; // return an empty string if no match is found
-  }
+  return lines.filter((line) => line.startsWith(">")).join("\n");
 }
 
 function replaceLineWithText(
@@ -204,7 +192,7 @@ function replaceLineWithText(
 ): string {
   // Split the text into an array of lines
   const lines = commentBody.split("\n");
-  const siteLine = `[${siteId}] ${url}`;
+  const siteLine = `> [${siteId}] ${url}`;
   let exists = false;
 
   // Loop through each line
@@ -237,7 +225,7 @@ function removeUnusedSiteIds(
 
   return lines
     .filter((line) =>
-      sitesToRemove.some((siteId) => line.startsWith(`[${siteId}]`))
+      sitesToRemove.some((siteId) => line.startsWith(`> [${siteId}]`))
     )
     .join("\n");
 }
