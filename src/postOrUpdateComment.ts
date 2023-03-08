@@ -203,23 +203,13 @@ function removeUnusedSiteIds(
   sitesToRemove: string[]
 ): string {
   // Split the text into an array of lines
-  console.log(`Removing`, sitesToRemove);
   const lines = urlBlock.split("\n");
-  console.log(`Lines`, lines);
-  const filtered = lines
-    .filter((line) => {
-      console.log("checking line", line);
-      const result = !sitesToRemove.some((siteId) =>
-        line.includes(`> [${siteId}]`)
-      );
-      console.log("got result", result);
-      return result;
-    })
+
+  return lines
+    .filter(
+      (line) => !sitesToRemove.some((siteId) => line.includes(`> [${siteId}]`))
+    )
     .join("\n");
-
-  console.log("returning filtered", filtered);
-
-  return filtered;
 }
 
 function getSiteIds(commentBody: string): string[] {
