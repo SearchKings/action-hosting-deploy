@@ -76,7 +76,7 @@ export function getChannelDeploySuccessComment(
   return `
 Visit the preview URL(s) for this PR (updated for commit ${commit}):
 
-${urlBlock}
+${urlBlock.trim()}
 
 <sub>(expires ${new Date(expireTime).toUTCString()})</sub>
 
@@ -206,8 +206,9 @@ function removeUnusedSiteIds(
   const lines = urlBlock.split("\n");
 
   return lines
-    .filter((line) =>
-      sitesToRemove.some((siteId) => line.startsWith(`> [${siteId}]`))
+    .filter(
+      (line) =>
+        !sitesToRemove.some((siteId) => line.startsWith(`> [${siteId}]`))
     )
     .join("\n");
 }
