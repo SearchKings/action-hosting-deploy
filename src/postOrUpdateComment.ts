@@ -61,9 +61,17 @@ export function getChannelDeploySuccessComment(
 
     console.log("Found previously-deployed siteIds", existingSiteIds);
 
-    const sitesToRemove = existingSiteIds.filter(
-      (existingSiteId) => !siteIds.includes(existingSiteId)
-    );
+    const sitesToRemove = existingSiteIds.filter((existingSiteId) => {
+      console.log(
+        "Does",
+        JSON.stringify(siteIds),
+        "include",
+        existingSiteId,
+        "?"
+      );
+      const result = siteIds.includes(existingSiteId);
+      return !result;
+    });
 
     if (sitesToRemove.length) {
       urlBlock = removeUnusedSiteIds(urlBlock, sitesToRemove);
