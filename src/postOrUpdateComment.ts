@@ -207,8 +207,7 @@ function removeUnusedSiteIds(
 
   return lines
     .filter(
-      (line) =>
-        !sitesToRemove.some((siteId) => line.startsWith(`> [${siteId}]`))
+      (line) => !sitesToRemove.some((siteId) => line.includes(`> [${siteId}]`))
     )
     .join("\n");
 }
