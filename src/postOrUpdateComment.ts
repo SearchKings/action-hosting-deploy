@@ -70,14 +70,14 @@ export function getChannelDeploySuccessComment(
   urlBlock = replaceLineWithText(urlBlock, siteId, urlList);
 
   return `
+# :crown: SearchKings Deploy Bot
+
 Visit the preview URL(s) for this PR (updated for commit ${commit}):
 
 ${urlBlock.trim()}
 
 <sub>(expires ${new Date(expireTime).toUTCString()})</sub>
-
 <sub>Sign: ${deploySignature}</sub>
-<sub>SearchKings Deploy Bot</sub>
 `.trim();
 }
 
@@ -97,7 +97,6 @@ export async function postChannelSuccessComment(
   startGroup(`Commenting on PR`);
   const isCommentByBot = (comment) =>
     comment.user.type === "Bot" &&
-    comment.user.name === "github-actions" &&
     comment.body.includes("SearchKings Deploy Bot");
 
   let existingComment;
@@ -106,8 +105,11 @@ export async function postChannelSuccessComment(
     for (let i = comments.length; i--; ) {
       const c = comments[i];
       if (isCommentByBot(c)) {
+        console.log("found bot comment", JSON.stringify(c));
         existingComment = c;
         break;
+      } else {
+        console.log("non-bot comment", JSON.stringify(c));
       }
     }
   } catch (e) {
