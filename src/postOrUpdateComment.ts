@@ -105,11 +105,8 @@ export async function postChannelSuccessComment(
     for (let i = comments.length; i--; ) {
       const c = comments[i];
       if (isCommentByBot(c)) {
-        console.log("found bot comment", JSON.stringify(c));
         existingComment = c;
         break;
-      } else {
-        console.log("non-bot comment", JSON.stringify(c));
       }
     }
   } catch (e) {
