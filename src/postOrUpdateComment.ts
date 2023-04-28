@@ -17,11 +17,7 @@
 import { endGroup, startGroup } from "@actions/core";
 import type { GitHub } from "@actions/github/lib/utils";
 import { Context } from "@actions/github/lib/context";
-import {
-  ChannelSuccessResult,
-  interpretChannelDeployResult,
-  ErrorResult,
-} from "./deploy";
+import { ChannelSuccessResult, interpretChannelDeployResult } from "./deploy";
 import { createDeploySignature } from "./hash";
 
 export function createBotCommentIdentifier(signature: string) {
@@ -80,7 +76,9 @@ ${urlBlock.trim()}
 
 <sub>(expires ${new Date(expireTime).toUTCString()})</sub>
 
-<sub>Sign: ${deploySignature}</sub>`.trim();
+<sub>Sign: ${deploySignature}</sub>
+<sub>SearchKings Deploy Bot</sub>
+`.trim();
 }
 
 export async function postChannelSuccessComment(
@@ -97,8 +95,10 @@ export async function postChannelSuccessComment(
   };
 
   startGroup(`Commenting on PR`);
-  const deploySignature = createDeploySignature(result);
-  const isCommentByBot = createBotCommentIdentifier(deploySignature);
+  const isCommentByBot = (comment) =>
+    comment.user.type === "Bot" &&
+    comment.user.name === "github-actions" &&
+    comment.body.includes("SearchKings Deploy Bot");
 
   let existingComment;
   try {
