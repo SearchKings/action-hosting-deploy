@@ -129,10 +129,12 @@ async function run() {
     }
     endGroup();
 
-    const { expireTime, urls } = interpretChannelDeployResult(deployment);
+    const { expireTime, expire_time_formatted, urls } =
+      interpretChannelDeployResult(deployment);
 
     setOutput("urls", urls);
     setOutput("expire_time", expireTime);
+    setOutput("expire_time_formatted", expire_time_formatted);
     setOutput("details_url", urls[0]);
 
     if (token && isPullRequest && !!octokit && !disableComment) {
