@@ -16,21 +16,14 @@
 
 import { Context } from "@actions/github/lib/context";
 
-export function getChannelId(
-  configuredChannelId: string,
-  ghContext: Context,
-  siteId?: string
-) {
+export function getChannelId(configuredChannelId: string, ghContext: Context) {
   let tmpChannelId: string = "";
 
   if (!!configuredChannelId) {
     tmpChannelId = configuredChannelId;
   } else if (ghContext.payload.pull_request) {
-    tmpChannelId = `pr${ghContext.payload.pull_request.number}`;
-  }
-
-  if (siteId) {
-    tmpChannelId = `${siteId}-${tmpChannelId}`;
+    const branchName = ghContext.payload.pull_request.head.ref.substr(0, 20);
+    tmpChannelId = `pr${ghContext.payload.pull_request.number}-${branchName}`;
   }
 
   // Channel IDs can only include letters, numbers, underscores, hyphens, and periods.

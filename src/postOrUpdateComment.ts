@@ -17,8 +17,15 @@
 import { endGroup, startGroup } from "@actions/core";
 import type { GitHub } from "@actions/github/lib/utils";
 import { Context } from "@actions/github/lib/context";
-import { ChannelSuccessResult, interpretChannelDeployResult } from "./deploy";
+import {
+  ChannelSuccessResult,
+  interpretChannelDeployResult,
+  ErrorResult,
+} from "./deploy";
 import { createDeploySignature } from "./hash";
+
+const BOT_SIGNATURE =
+  "<sub>🔥 via [Firebase Hosting GitHub Action](https://github.com/marketplace/actions/deploy-to-firebase-hosting) 🌎</sub>";
 
 export function createBotCommentIdentifier(signature: string) {
   return function isCommentByBot(comment): boolean {
@@ -38,74 +45,53 @@ export function getURLsMarkdownFromChannelDeployResult(
 
 export function getChannelDeploySuccessComment(
   result: ChannelSuccessResult,
-  commit: string,
-  siteId: string,
-  siteIds: string[],
-  existingCommentBody?: string
-): string {
+  commit: string
+) {
   const deploySignature = createDeploySignature(result);
   const urlList = getURLsMarkdownFromChannelDeployResult(result);
   const { expireTime } = interpretChannelDeployResult(result);
-  let urlBlock = "";
-
-  if (existingCommentBody) {
-    urlBlock = getUrlLines(existingCommentBody);
-
-    console.log("Found existing URL block", urlBlock);
-
-    const existingSiteIds = getSiteIds(urlBlock);
-
-    console.log("Found previously-deployed siteIds", existingSiteIds);
-
-    const sitesToRemove = existingSiteIds.filter(
-      (existingSiteId) => !siteIds.includes(existingSiteId)
-    );
-
-    if (sitesToRemove.length) {
-      urlBlock = removeUnusedSiteIds(urlBlock, sitesToRemove);
-      console.log("Removed previously-deployed sites", sitesToRemove);
-    }
-  }
-
-  urlBlock = replaceLineWithText(urlBlock, siteId, urlList);
 
   return `
-# :crown: SearchKings Deploy Bot
+Visit the preview URL for this PR (updated for commit ${commit}):
 
-Visit the preview URL(s) for this PR (updated for commit ${commit}):
-
-${urlBlock.trim()}
+${urlList}
 
 <sub>(expires ${new Date(expireTime).toUTCString()})</sub>
-<sub>Sign: ${deploySignature}</sub>
-`.trim();
+
+${BOT_SIGNATURE}
+
+<sub>Sign: ${deploySignature}</sub>`.trim();
 }
 
 export async function postChannelSuccessComment(
   github: InstanceType<typeof GitHub>,
   context: Context,
   result: ChannelSuccessResult,
-  commit: string,
-  siteId: string,
-  siteIds: string[]
+  commit: string
 ) {
   const commentInfo = {
     ...context.repo,
     issue_number: context.issue.number,
   };
 
-  startGroup(`Commenting on PR`);
-  const isCommentByBot = (comment) =>
-    comment.user.type === "Bot" &&
-    comment.body.includes("SearchKings Deploy Bot");
+  const commentMarkdown = getChannelDeploySuccessComment(result, commit);
 
-  let existingComment;
+  const comment = {
+    ...commentInfo,
+    body: commentMarkdown,
+  };
+
+  startGroup(`Commenting on PR`);
+  const deploySignature = createDeploySignature(result);
+  const isCommentByBot = createBotCommentIdentifier(deploySignature);
+
+  let commentId;
   try {
     const comments = (await github.rest.issues.listComments(commentInfo)).data;
     for (let i = comments.length; i--; ) {
       const c = comments[i];
       if (isCommentByBot(c)) {
-        existingComment = c;
+        commentId = c.id;
         break;
       }
     }
@@ -113,110 +99,24 @@ export async function postChannelSuccessComment(
     console.log("Error checking for previous comments: " + e.message);
   }
 
-  if (existingComment) {
+  if (commentId) {
     try {
-      const commentMarkdown = getChannelDeploySuccessComment(
-        result,
-        commit,
-        siteId,
-        siteIds,
-        existingComment.body
-      );
-
-      const comment = {
-        ...commentInfo,
-        body: commentMarkdown,
-      };
-
       await github.rest.issues.updateComment({
         ...context.repo,
-        comment_id: existingComment.id,
+        comment_id: commentId,
         body: comment.body,
       });
     } catch (e) {
-      existingComment = null;
+      commentId = null;
     }
   }
 
-  if (!existingComment) {
+  if (!commentId) {
     try {
-      const commentMarkdown = getChannelDeploySuccessComment(
-        result,
-        commit,
-        siteId,
-        siteIds
-      );
-
-      const comment = {
-        ...commentInfo,
-        body: commentMarkdown,
-      };
-
       await github.rest.issues.createComment(comment);
     } catch (e) {
       console.log(`Error creating comment: ${e.message}`);
     }
   }
   endGroup();
-}
-
-function getUrlLines(commentBody: string): string {
-  const lines = commentBody.split("\n");
-
-  return lines.filter((line) => line.startsWith(">")).join("\n");
-}
-
-function replaceLineWithText(
-  commentBody: string,
-  siteId: string,
-  url: string
-): string {
-  // Split the text into an array of lines
-  const lines = commentBody.split("\n");
-  const siteLine = `> [${siteId}] ${url}`;
-  let exists = false;
-
-  // Loop through each line
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-
-    // Check if the line contains the search text
-    if (line.includes(siteId)) {
-      exists = true;
-      // Replace the line with the replacement text
-      lines[i] = siteLine;
-      break;
-    }
-  }
-
-  if (!exists) {
-    lines.push(siteLine);
-  }
-
-  // Join the lines back together into a single string and return it
-  return lines.join("\n");
-}
-
-function removeUnusedSiteIds(
-  urlBlock: string,
-  sitesToRemove: string[]
-): string {
-  // Split the text into an array of lines
-  const lines = urlBlock.split("\n");
-
-  return lines
-    .filter(
-      (line) => !sitesToRemove.some((siteId) => line.includes(`> [${siteId}]`))
-    )
-    .join("\n");
-}
-
-function getSiteIds(commentBody: string): string[] {
-  const regex = /\[(.+)\]\s/g;
-  const labels = [];
-  let match;
-  while ((match = regex.exec(commentBody)) !== null) {
-    labels.push(match[1]);
-  }
-  return labels;
 }
