@@ -59,16 +59,16 @@ inputs:
       The version of firebase-tools to use. Defaults to `latest`.
     default: latest
     required: false
-  siteId:
-    description: The site ID being deployed as part of this run.
-    required: true
-  siteIds:
-    description: The array of site IDs affected by this run. Used to update the comment if a site becomes unaffected.
-    required: true
+  disableComment:
+    description: >-
+      Disable auto-commenting with the preview channel URL to the pull request
+    required: false
 outputs:
   urls:
     description: The url(s) deployed to
   expire_time:
     description: The time the deployed preview urls expire
+  expire_time_formatted:
+    description: The time the deployed preview urls expire in the UTC format
   details_url:
     description: A single URL that was deployed to

@@ -40,10 +40,6 @@ import {
 // Inputs defined in action.yml
 const expires = getInput("expires");
 const projectId = getInput("projectId");
-const siteIds = getInput("siteIds");
-const siteIdsList: string[] = JSON.parse(siteIds);
-const siteId = getInput("siteId");
-
 const googleApplicationCredentials = getInput("firebaseServiceAccount", {
   required: true,
 });
@@ -54,6 +50,7 @@ const octokit = token ? getOctokit(token) : undefined;
 const entryPoint = getInput("entryPoint");
 const target = getInput("target");
 const firebaseToolsVersion = getInput("firebaseToolsVersion");
+const disableComment = getInput("disableComment");
 
 async function run() {
   const isPullRequest = !!context.payload.pull_request;
@@ -116,7 +113,7 @@ async function run() {
       return;
     }
 
-    const channelId = getChannelId(configuredChannelId, context, siteId);
+    const channelId = getChannelId(configuredChannelId, context);
 
     startGroup(`Deploying to Firebase preview channel ${channelId}`);
     const deployment = await deployPreview(gacFilename, {
@@ -132,28 +129,18 @@ async function run() {
     }
     endGroup();
 
-    const { expireTime, urls } = interpretChannelDeployResult(deployment);
+    const { expireTime, expire_time_formatted, urls } =
+      interpretChannelDeployResult(deployment);
 
     setOutput("urls", urls);
     setOutput("expire_time", expireTime);
+    setOutput("expire_time_formatted", expire_time_formatted);
     setOutput("details_url", urls[0]);
 
-    const urlsListMarkdown =
-      urls.length === 1
-        ? `[${urls[0]}](${urls[0]})`
-        : urls.map((url) => `- [${url}](${url})`).join("\n");
-
-    if (token && isPullRequest && !!octokit) {
+    if (token && isPullRequest && !!octokit && !disableComment) {
       const commitId = context.payload.pull_request?.head.sha.substring(0, 7);
 
-      await postChannelSuccessComment(
-        octokit,
-        context,
-        deployment,
-        commitId,
-        siteId,
-        siteIdsList
-      );
+      await postChannelSuccessComment(octokit, context, deployment, commitId);
     }
 
     await finish({

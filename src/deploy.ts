@@ -56,14 +56,16 @@ export type ProductionDeployConfig = DeployConfig & {};
 
 export function interpretChannelDeployResult(
   deployResult: ChannelSuccessResult
-): { expireTime: string; urls: string[] } {
+): { expireTime: string; expire_time_formatted: string; urls: string[] } {
   const allSiteResults = Object.values(deployResult.result);
 
   const expireTime = allSiteResults[0].expireTime;
+  const expire_time_formatted = new Date(expireTime).toUTCString();
   const urls = allSiteResults.map((siteResult) => siteResult.url);
 
   return {
     expireTime,
+    expire_time_formatted,
     urls,
   };
 }
@@ -127,13 +129,8 @@ export async function deployPreview(
   gacFilename: string,
   deployConfig: ChannelDeployConfig
 ) {
-  const {
-    projectId,
-    channelId,
-    target,
-    expires,
-    firebaseToolsVersion,
-  } = deployConfig;
+  const { projectId, channelId, target, expires, firebaseToolsVersion } =
+    deployConfig;
 
   const deploymentText = await execWithCredentials(
     [
